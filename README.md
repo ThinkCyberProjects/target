@@ -8,11 +8,11 @@
 
 ## Features
 
-🔹 Store IPs under human-readable names
-🔹 Auto-discover local /24 ranges
-🔹 Export saved targets to a file
-🔹 Instantly integrate with `nmap`, `nxc`, `enum4linux`, and others
-🔹 Easy uninstall, clean session clearing
+-  Store IPs under human-readable names
+-  Auto-discover local /24 ranges
+-  Export saved targets to a file
+-  Instantly integrate with `nmap`, `nxc`, `enum4linux`, and others
+-  Easy uninstall, clean session clearing
 
 ---
 
