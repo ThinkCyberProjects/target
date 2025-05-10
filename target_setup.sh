@@ -217,6 +217,7 @@ for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
 
 # target tool
 alias target='source $TARGET_SCRIPT'
+target > /dev/null
 ALIAS
   fi
 done
