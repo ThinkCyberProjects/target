@@ -68,15 +68,14 @@ case "$cmd" in
   uninstall)
     echo -e "${YELLOW}Uninstalling target tool...${NC}"
     
-    # Remove alias from shell rc files
-    for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
-        if [ -f "$rc" ]; then
-            # Remove the alias line and empty lines around it
-            sed -i.bak '/# target tool/d' "$rc"
-            sed -i '/alias target=.source.*target\.sh.*/d' "$rc"
-            echo -e "${GREEN}Removed alias from $rc${NC}"
-        fi
-    done
+# Remove source block from shell rc files
+for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
+    if [ -f "$rc" ]; then
+        # Remove the comment and the two lines after it
+        sed -i.bak '/# target tool/,+2d' "$rc"
+        echo -e "${GREEN}Removed alias from $rc${NC}"
+    fi
+done
     
     # Remove created files
     if [ -f "$TARGET_VARS" ]; then
@@ -212,11 +211,13 @@ touch "$TARGET_VARS"
 # Append alias to shell rc files if missing
 for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
   [ -f "$rc" ] || touch "$rc"
-  if ! grep -Fxq "alias target='source $TARGET_SCRIPT'" "$rc"; then
-    cat >> "$rc" << ALIAS
+  if ! grep -Fq "# target tool" "$rc"; then
+    cat >> "$rc" << 'ALIAS'
 
 # target tool
-alias target='source $TARGET_SCRIPT'
+if [ -f "$HOME/.target.sh" ]; then
+    source "$HOME/.target.sh" > /dev/null
+fi
 ALIAS
   fi
 done
