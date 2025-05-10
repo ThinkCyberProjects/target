@@ -26,7 +26,7 @@ NC='\033[0m' # No Color
 show_help() {
     cat << HELP
 ==========================================
- Target - Variable Shortcut Manager (v1.2)
+ Target - Variable Shortcut Manager (v1.3)
 ==========================================
 
 Usage: target <command> [args]
@@ -68,15 +68,17 @@ case "$cmd" in
   uninstall)
     echo -e "${YELLOW}Uninstalling target tool...${NC}"
     
-    # Remove alias from shell rc files
-    for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
-        if [ -f "$rc" ]; then
-            # Remove the alias line and empty lines around it
-            sed -i.bak '/# target tool/d' "$rc"
-            sed -i '/alias target=.source.*target\.sh.*/d' "$rc"
-            echo -e "${GREEN}Removed alias from $rc${NC}"
-        fi
-    done
+# Remove all Target traces from rc files
+for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
+    if [ -f "$rc" ]; then
+        sed -i.bak \
+            -e '/# target tool/d' \
+            -e '/source[[:space:]]\+.*\.target\.sh/d' \
+            -e "/alias[[:space:]]\+target=.*\.target\.sh'/d" \
+            "$rc"
+        echo -e "${GREEN}Cleaned entries from $rc${NC}"
+    fi
+done
     
     # Remove created files
     if [ -f "$TARGET_VARS" ]; then
@@ -216,8 +218,8 @@ for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
     cat >> "$rc" << ALIAS
 
 # target tool
-alias target='source $TARGET_SCRIPT'
-target > /dev/null
+source /home/kali/.target.sh >/dev/null
+alias target='bash /home/kali/.target.sh'
 
 ALIAS
   fi
