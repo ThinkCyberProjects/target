@@ -20,7 +20,6 @@
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/ThinkCyberProjects/target/main/target_setup.sh | bash
-source ~/.bashrc # or ~/.zshrc depending on your shell
 ```
 
 ---
