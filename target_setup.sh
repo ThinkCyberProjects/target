@@ -219,7 +219,7 @@ for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
 
 # target tool
 source /home/kali/.target.sh >/dev/null
-alias target='bash /home/kali/.target.sh'
+alias target='source /home/kali/.target.sh'
 
 ALIAS
   fi
