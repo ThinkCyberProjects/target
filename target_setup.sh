@@ -5,13 +5,21 @@
 TARGET_SCRIPT="$HOME/.target.sh"
 TARGET_VARS="$HOME/.target_vars"
 
+
 # Write the main 'target' script
 #echo "Writing $TARGET_SCRIPT..."
 cat > "$TARGET_SCRIPT" << 'EOF'
 #!/usr/bin/env bash
+if [[ "${BASH_SOURCE[0]}" != "${0}" ]]; then
+  SOURCED=1
+else
+  SOURCED=0
+fi
+
 
 TARGET_VARS="$HOME/.target_vars"
-
+IPV4_REGEX='^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'
+DOMAIN_REGEX='^([A-Za-z0-9](-?[A-Za-z0-9])*\.)+[A-Za-z]{2,}$'
 # Colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -19,20 +27,27 @@ CYAN='\033[0;36m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Load saved variables
-[ -f "$TARGET_VARS" ] && source "$TARGET_VARS"
+# Load saved variables safely (handles space-separated lists)
+if [ -f "$TARGET_VARS" ]; then
+  while IFS='=' read -r key val; do
+    # strip surrounding quotes, if any
+    val=${val#\"}; val=${val%\"}
+    export "$key"="$val"
+  done < "$TARGET_VARS"
+fi
+
 
 # Show help menu
 show_help() {
     cat << HELP
 ==========================================
- Target - Variable Shortcut Manager (v1.3)
+ Target - Variable Shortcut Manager (v1.4)
 ==========================================
 
 Usage: target <command> [args]
 
 Commands:
-  <name> [ip]     Save IP under 'name', or if no IP given, show saved IP.
+  <name> [ip]     <name> [value]  Save an IPv4 or domain under 'name'.
   all             List all saved variables.
   rng             Show /24 network ranges and save to 'rng' variable.
   clear           Erase all saved variables.
@@ -48,7 +63,7 @@ Examples:
   target uninstall       		# Completely remove target tool
 
 ========================================
-     .. Created by DS for RTX ..
+     .. Created for RTX ..
 ========================================
 
 HELP
@@ -61,7 +76,7 @@ if [ "$#" -gt 0 ]; then
 fi
 
 case "$cmd" in
-  help|"")
+  ""|help)
     show_help
     ;;
 
@@ -75,11 +90,17 @@ for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
             -e '/# target tool/d' \
             -e '/source[[:space:]]\+.*\.target\.sh/d' \
             -e "/alias[[:space:]]\+target=.*\.target\.sh'/d" \
+            -e '/^target() { source .*target\.sh "\$@"; }$/d' \
             "$rc"
         echo -e "${GREEN}Cleaned entries from $rc${NC}"
     fi
 done
-    
+    # Unset any loaded variables
+	if [ -f "$TARGET_VARS" ]; then
+	    while IFS= read -r v; do 
+	        unset "${v%%=*}" 2>/dev/null
+	    done < "$TARGET_VARS"
+	fi
     # Remove created files
     if [ -f "$TARGET_VARS" ]; then
         rm -f "$TARGET_VARS"
@@ -93,18 +114,15 @@ done
         echo -e "${GREEN}Removed $SCRIPT_PATH${NC}"
     fi
     
-    # Unset any loaded variables
-    if [ -f "$TARGET_VARS" ]; then
-        while IFS= read -r v; do 
-            unset "${v%%=*}" 2>/dev/null
-        done < "$TARGET_VARS"
-    fi
-    
+
     echo -e "${GREEN}Target tool completely uninstalled!${NC}"
     echo -e "${YELLOW}Please restart your terminal or start a new shell session.${NC}"
     
-    # Since we're running through source, we need to return
-    return 0
+    if (( SOURCED )); then
+      return 0
+    else
+      exit 0
+    fi
     ;;
 
   clear)
@@ -178,30 +196,47 @@ done
     fi
     ;;
 
-  *)
-    name="$cmd"
-    ipaddr="$1"
-    if [ -z "$ipaddr" ]; then
-      val=$(grep -m1 "^${name}=" "$TARGET_VARS" | cut -d'=' -f2-)
-      if [ -z "$val" ]; then
-        echo -e "${RED}Variable '$name' not set.${NC}"
-      else
-        echo -e "${CYAN}\$${name}${NC} -> ${GREEN}${val}${NC}"
-      fi
-    else
-      if [[ ! "$ipaddr" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-        echo -e "${RED}Invalid IP format: $ipaddr${NC}" >&2
-        exit 1
-      fi
-      if grep -q "^${name}=" "$TARGET_VARS"; then
-        sed -i "s|^${name}=.*|${name}=${ipaddr}|" "$TARGET_VARS"
-      else
-        echo "${name}=${ipaddr}" >> "$TARGET_VARS"
-      fi
-      export "$name"="$ipaddr"
-      echo -e "${GREEN}Set '${name}' to '${ipaddr}' and saved to ${TARGET_VARS}.${NC}"
-    fi
-    ;;
+	*)
+	  name="$cmd"
+	  value="$1"
+	  if [ -z "$value" ]; then
+	    # display
+	    stored=$(grep -m1 "^${name}=" "$TARGET_VARS" | cut -d'=' -f2-)
+	    if [ -z "$stored" ]; then
+	      echo -e "${RED}Variable '$name' not set.${NC}"
+	    else
+	      echo -e "${CYAN}\$${name}${NC} -> ${GREEN}${stored}${NC}"
+	    fi
+	    exit
+	  fi
+	
+	  # decide if IP or domain
+	  if [[ "$value" =~ $IPV4_REGEX ]]; then
+	    type="IP"
+	  elif [[ "$value" =~ $DOMAIN_REGEX ]]; then
+	    type="DOMAIN"
+	  else
+	    echo -e "${RED}Invalid format: '$value' is neither an IPv4 nor a valid domain.${NC}"
+	    exit 1
+	  fi
+	
+	  # save (allow multiple)
+	  if grep -q "^${name}=" "$TARGET_VARS"; then
+	    # append if not already present
+	    old=$(grep "^${name}=" "$TARGET_VARS" | cut -d'=' -f2-)
+	    if [[ ! " $old " =~ " $value " ]]; then
+	      new="$old $value"
+	      sed -i.bak "s|^${name}=.*|${name}=\"${new}\"|" "$TARGET_VARS"
+
+	    fi
+	  else
+	    echo "${name}=\"${value}\"" >> "$TARGET_VARS"
+	  fi
+	
+	  export "$name"="$value"
+	  echo -e "${GREEN}Set ${type} '${name}' -> '${value}'${NC}"
+	  ;;
+
 esac
 EOF
 
@@ -214,14 +249,13 @@ touch "$TARGET_VARS"
 # Append alias to shell rc files if missing
 for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
   [ -f "$rc" ] || touch "$rc"
-  if ! grep -Fxq "alias target='source $TARGET_SCRIPT'" "$rc"; then
-    cat >> "$rc" << ALIAS
+  if ! grep -Fxq "target() { source \"$TARGET_SCRIPT\" \"\$@\"; }" "$rc"; then
+    cat >> "$rc" << EOF
 
 # target tool
-source /home/kali/.target.sh >/dev/null
-alias target='source /home/kali/.target.sh'
+target() { source "$TARGET_SCRIPT" "\$@"; }
 
-ALIAS
+EOF
   fi
 done
 
