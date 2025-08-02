@@ -249,10 +249,12 @@ touch "$TARGET_VARS"
 # Append alias to shell rc files if missing
 for rc in "$HOME/.bashrc" "$HOME/.zshrc"; do
   [ -f "$rc" ] || touch "$rc"
+
   if ! grep -Fxq "target() { source \"$TARGET_SCRIPT\" \"\$@\"; }" "$rc"; then
     cat >> "$rc" << EOF
 
 # target tool
+[ -f "$TARGET_SCRIPT" ] && source "$TARGET_SCRIPT"
 target() { source "$TARGET_SCRIPT" "\$@"; }
 
 EOF
