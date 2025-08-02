@@ -113,7 +113,3 @@ nmap -sn $rng
 
 ---
 
-## Contribute
-Pull requests are welcome. If you've got aliases or scripts to hook into other tools, share them.
-
-**Stay sharp. Stay fast. Stay stealthy.**
