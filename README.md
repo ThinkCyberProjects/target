@@ -19,7 +19,11 @@
 ## Installation
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/ThinkCyberProjects/target/main/target_setup.sh | bash
+git clone https://github.com/ThinkCyberProjects/target.git
+cd target
+sudo bash setup.sh
+
+# You can safely delete the cloned target/ directory after installation — the tool is fully installed to /opt/target.
 ```
 
 ---
